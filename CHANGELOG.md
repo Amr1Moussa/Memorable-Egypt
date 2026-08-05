@@ -8,11 +8,50 @@ for released versions. Phases track the build toward the 1.0.0 public launch.
 
 ## [Unreleased]
 
-### Phase 2.1 — Database schema (in progress)
+### Phase 2.1 — Database schema ✓
 
-_Planned: Supabase project, SQL migrations (all doc-07 tables + PostGIS), RLS
-policies, indexes, seed data (categories, governorates, landmark locations),
-generated ER diagram._
+#### Added
+- **Supabase project config** (`supabase/config.toml`) — PostgreSQL 17,
+  PostGIS, Auth (Email/Password + Google OAuth), Storage, with the documented
+  local ports and security settings.
+- **9 SQL migrations** (`supabase/migrations/`):
+  - `0001` — Extensions (postgis, pgcrypto, unaccent), enums, `profiles`,
+    role-helper functions (`current_user_id`, `is_admin`, `is_owner`).
+  - `0002` — `locations` (PostGIS generated geography point + tier/status),
+    `categories`, `tags`.
+  - `0003` — `memories` (pin_type, visibility, lifecycle), `memory_media`,
+    `memory_tags` (M:N).
+  - `0004` — `payments` (manual verification state machine, doc 15),
+    `payment_receipts` (private).
+  - `0005` — Engagement tables: `comments`, `reactions` (4 types), `bookmarks`,
+    `notifications` (deferred per ADR D6) + `reports` (MVP moderation).
+  - `0006` — `settings` (key/value business config, doc 22) seeded with
+    payment details, all 8 prices, Genesis campaign state; `audit_log`
+    (immutable).
+  - `0007` — **Row-Level Security** on every table. Deny-by-default; public
+    read only for genuinely public data; owner/admin write rules. Deferred
+    engagement tables locked to admin-read-only.
+  - `0008` — Indexes: PostGIS GIST on `locations.coordinates`, FK indexes,
+    filter indexes, partial unique on `memories.slug`, case-insensitive
+    unique on `profiles.username`.
+  - `0009` — Triggers: `updated_at` maintenance, auto-slug generation
+    (locations/memories/categories), profile auto-create on signup,
+    memory-media count cap (max 10), denormalized location counters.
+- **Seed data** (`supabase/seed.sql`) — 10 categories, all 27 Egyptian
+  governorates, 14 Tier 3–4 landmark locations.
+- **Typed database client** (`src/lib/supabase/types.ts`) — hand-authored
+  `Database` interface mirroring the schema; wired into all three Supabase
+  clients (`client`, `server`, `admin`).
+- **ER diagram** (`docs/erd.png` + `docs/erd.dot`) — generated via Graphviz;
+  first-class entities highlighted, deferred tables marked.
+
+#### Verification
+- `tsc --noEmit`, `eslint`, and `next build` all pass clean.
+- SQL statically reviewed for ordering (extensions before functions),
+  `auth.uid()` correctness, and `security definer set search_path` hardening.
+- ⚠️ **Migrations are NOT yet execute-verified** — this sandbox has no
+  Docker/WSL/native Postgres, so `supabase db reset` could not run here.
+  Apply locally with `supabase db reset` (requires Docker) before Phase 2.2.
 
 ## [0.1.0] — 2026-08-05
 

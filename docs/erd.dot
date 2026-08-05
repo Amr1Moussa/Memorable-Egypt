@@ -1,0 +1,223 @@
+// Memorable Egypt — Entity-Relationship diagram.
+// Rendered with Graphviz: `dot -Tpng docs/erd.dot -o docs/erd.png`
+//
+// Mirrors supabase/migrations/*. The two first-class entities (User → Memory
+// ← Location) anchor the model. Deferred engagement tables (ADR D6) are shown
+// with a dashed border to make their status explicit.
+
+digraph MemorableEgyptERD {
+  graph [
+    rankdir=LR,
+    fontname="Helvetica",
+    label="\nMemorable Egypt — Database ERD\n(generated from supabase/migrations/)",
+    labelloc="t",
+    pad=0.4,
+    nodesep=0.5,
+    ranksep=0.9,
+    splines=polyline,
+  ];
+  node  [shape=plaintext, fontname="Helvetica"];
+  edge  [color="#6B7280", arrowtail=crow, arrowhead=none, dir=both];
+
+  // ----- auth.users (external anchor) -----
+  auth_users [label=<
+    <table border="0" cellborder="1" cellspacing="0" cellpadding="6" bgcolor="#F3EFE6">
+      <tr><td bgcolor="#2C6E91"><font color="white"><b>auth.users</b></font></td></tr>
+      <tr><td align="left"><b>id</b> uuid (PK)</td></tr>
+      <tr><td align="left">email</td></tr>
+    </table>
+  >];
+
+  // ----- profiles -----
+  profiles [label=<
+    <table border="0" cellborder="1" cellspacing="0" cellpadding="6">
+      <tr><td bgcolor="#D8B36A"><b>profiles</b></td></tr>
+      <tr><td align="left"><b>id</b> uuid (PK, FK→auth.users)</td></tr>
+      <tr><td align="left">username · unique</td></tr>
+      <tr><td align="left">display_name · bio</td></tr>
+      <tr><td align="left">avatar_url · home_city</td></tr>
+      <tr><td align="left"><b>role</b> user_role</td></tr>
+      <tr><td align="left">genesis_claimed bool</td></tr>
+      <tr><td align="left">created_at · updated_at</td></tr>
+    </table>
+  >];
+
+  // ----- locations -----
+  locations [label=<
+    <table border="0" cellborder="1" cellspacing="0" cellpadding="6">
+      <tr><td bgcolor="#D8B36A"><b>locations</b></td></tr>
+      <tr><td align="left"><b>id</b> uuid (PK)</td></tr>
+      <tr><td align="left">name · slug unique</td></tr>
+      <tr><td align="left">governorate · city · address</td></tr>
+      <tr><td align="left">place_type</td></tr>
+      <tr><td align="left"><b>tier</b> smallint (1–4)</td></tr>
+      <tr><td align="left">latitude · longitude</td></tr>
+      <tr><td align="left"><i>coordinates</i> geography (gen)</td></tr>
+      <tr><td align="left">status · memory_count · legacy_count</td></tr>
+    </table>
+  >];
+
+  // ----- categories -----
+  categories [label=<
+    <table border="0" cellborder="1" cellspacing="0" cellpadding="6">
+      <tr><td bgcolor="#D8B36A"><b>categories</b></td></tr>
+      <tr><td align="left"><b>id</b> uuid (PK)</td></tr>
+      <tr><td align="left">name · slug unique · icon</td></tr>
+    </table>
+  >];
+
+  // ----- tags -----
+  tags [label=<
+    <table border="0" cellborder="1" cellspacing="0" cellpadding="6">
+      <tr><td bgcolor="#D8B36A"><b>tags</b></td></tr>
+      <tr><td align="left"><b>id</b> uuid (PK)</td></tr>
+      <tr><td align="left">name · unique</td></tr>
+    </table>
+  >];
+
+  // ----- memories (core) -----
+  memories [label=<
+    <table border="0" cellborder="1" cellspacing="0" cellpadding="6">
+      <tr><td bgcolor="#C76B4F"><font color="white"><b>memories</b></font></td></tr>
+      <tr><td align="left"><b>id</b> uuid (PK)</td></tr>
+      <tr><td align="left"><b>user_id</b> FK → profiles</td></tr>
+      <tr><td align="left"><b>location_id</b> FK → locations</td></tr>
+      <tr><td align="left">category_id FK → categories</td></tr>
+      <tr><td align="left">title · slug · story</td></tr>
+      <tr><td align="left"><b>pin_type</b> standard|legacy</td></tr>
+      <tr><td align="left"><b>visibility</b> public|private|unlisted</td></tr>
+      <tr><td align="left">status · ai_enhanced</td></tr>
+      <tr><td align="left">is_featured · published_at</td></tr>
+      <tr><td align="left">created_at · updated_at · deleted_at</td></tr>
+    </table>
+  >];
+
+  // ----- memory_media -----
+  memory_media [label=<
+    <table border="0" cellborder="1" cellspacing="0" cellpadding="6">
+      <tr><td bgcolor="#D8B36A"><b>memory_media</b></td></tr>
+      <tr><td align="left"><b>id</b> uuid (PK)</td></tr>
+      <tr><td align="left"><b>memory_id</b> FK → memories</td></tr>
+      <tr><td align="left">storage_path · public_url · alt_text</td></tr>
+      <tr><td align="left">width · height · size_bytes · mime_type</td></tr>
+      <tr><td align="left">sort_order</td></tr>
+    </table>
+  >];
+
+  // ----- memory_tags (M:N) -----
+  memory_tags [label=<
+    <table border="0" cellborder="1" cellspacing="0" cellpadding="6">
+      <tr><td bgcolor="#D8B36A"><b>memory_tags</b> (M:N)</td></tr>
+      <tr><td align="left"><b>memory_id</b> FK → memories</td></tr>
+      <tr><td align="left"><b>tag_id</b> FK → tags</td></tr>
+    </table>
+  >];
+
+  // ----- payments -----
+  payments [label=<
+    <table border="0" cellborder="1" cellspacing="0" cellpadding="6">
+      <tr><td bgcolor="#D8B36A"><b>payments</b></td></tr>
+      <tr><td align="left"><b>id</b> uuid (PK)</td></tr>
+      <tr><td align="left"><b>user_id</b> FK → profiles</td></tr>
+      <tr><td align="left"><b>memory_id</b> FK → memories</td></tr>
+      <tr><td align="left">reference unique (ME-YYYY-NNNNNN)</td></tr>
+      <tr><td align="left"><b>pin_type · tier · amount</b></td></tr>
+      <tr><td align="left">currency · method · status</td></tr>
+      <tr><td align="left">is_genesis</td></tr>
+      <tr><td align="left">reviewed_by · reviewed_at · rejection_reason</td></tr>
+    </table>
+  >];
+
+  // ----- payment_receipts -----
+  payment_receipts [label=<
+    <table border="0" cellborder="1" cellspacing="0" cellpadding="6">
+      <tr><td bgcolor="#D8B36A"><b>payment_receipts</b></td></tr>
+      <tr><td align="left"><b>id</b> uuid (PK)</td></tr>
+      <tr><td align="left"><b>payment_id</b> FK → payments</td></tr>
+      <tr><td align="left">storage_path (private) · file_name</td></tr>
+      <tr><td align="left">mime_type · size_bytes</td></tr>
+    </table>
+  >];
+
+  // ----- reports -----
+  reports [label=<
+    <table border="0" cellborder="1" cellspacing="0" cellpadding="6">
+      <tr><td bgcolor="#D8B36A"><b>reports</b></td></tr>
+      <tr><td align="left"><b>id</b> uuid (PK)</td></tr>
+      <tr><td align="left"><b>reporter_id</b> FK → profiles</td></tr>
+      <tr><td align="left"><b>memory_id</b> FK → memories</td></tr>
+      <tr><td align="left">reason · description</td></tr>
+      <tr><td align="left">status · reviewed_by · reviewed_at</td></tr>
+    </table>
+  >];
+
+  // ----- settings & audit_log -----
+  settings [label=<
+    <table border="0" cellborder="1" cellspacing="0" cellpadding="6">
+      <tr><td bgcolor="#D8B36A"><b>settings</b></td></tr>
+      <tr><td align="left"><b>id</b> uuid (PK)</td></tr>
+      <tr><td align="left">(category, key) unique</td></tr>
+      <tr><td align="left">value · type · description</td></tr>
+      <tr><td align="left">updated_by · updated_at</td></tr>
+    </table>
+  >];
+
+  audit_log [label=<
+    <table border="0" cellborder="1" cellspacing="0" cellpadding="6">
+      <tr><td bgcolor="#D8B36A"><b>audit_log</b> (immutable)</td></tr>
+      <tr><td align="left"><b>id</b> uuid (PK)</td></tr>
+      <tr><td align="left">actor_id · action</td></tr>
+      <tr><td align="left">entity_type · entity_id · metadata</td></tr>
+    </table>
+  >];
+
+  // ----- deferred engagement (ADR D6) -----
+  comments [label=<
+    <table border="0" cellborder="1" cellspacing="0" cellpadding="6" bgcolor="#FAF8F3">
+      <tr><td bgcolor="#9CA3AF"><font color="white"><b>comments</b> (deferred)</font></td></tr>
+      <tr><td align="left"><b>memory_id</b> FK · <b>user_id</b> FK</td></tr>
+      <tr><td align="left">content · status · deleted_at</td></tr>
+    </table>
+  >];
+  reactions [label=<
+    <table border="0" cellborder="1" cellspacing="0" cellpadding="6" bgcolor="#FAF8F3">
+      <tr><td bgcolor="#9CA3AF"><font color="white"><b>reactions</b> (deferred)</font></td></tr>
+      <tr><td align="left"><b>memory_id</b> FK · <b>user_id</b> FK</td></tr>
+      <tr><td align="left">reaction (love|nostalgic|emotional|inspiring)</td></tr>
+    </table>
+  >];
+  bookmarks [label=<
+    <table border="0" cellborder="1" cellspacing="0" cellpadding="6" bgcolor="#FAF8F3">
+      <tr><td bgcolor="#9CA3AF"><font color="white"><b>bookmarks</b> (deferred)</font></td></tr>
+      <tr><td align="left"><b>user_id</b> FK · <b>memory_id</b> FK</td></tr>
+    </table>
+  >];
+  notifications [label=<
+    <table border="0" cellborder="1" cellspacing="0" cellpadding="6" bgcolor="#FAF8F3">
+      <tr><td bgcolor="#9CA3AF"><font color="white"><b>notifications</b> (deferred)</font></td></tr>
+      <tr><td align="left"><b>user_id</b> FK · type · title · body</td></tr>
+      <tr><td align="left">entity_type · entity_id · read</td></tr>
+    </table>
+  >];
+
+  // ----- Relationships -----
+  auth_users     -> profiles       [arrowhead=none, arrowtail=none, label="1:1"];
+  profiles       -> memories       [label="1:N"];
+  locations      -> memories       [label="1:N"];
+  categories     -> memories       [label="1:N"];
+  memories       -> memory_media   [label="1:N"];
+  memories       -> memory_tags    [label="1:N"];
+  tags           -> memory_tags    [label="1:N"];
+  memories       -> payments       [label="1:N"];
+  profiles       -> payments       [label="1:N"];
+  payments       -> payment_receipts [label="1:N"];
+  memories       -> reports        [label="1:N"];
+  profiles       -> reports        [label="1:N (reporter)"];
+
+  // Deferred (dashed)
+  edge [style=dashed, color="#9CA3AF"];
+  memories       -> comments       [label="1:N"];
+  memories       -> reactions      [label="1:N"];
+  memories       -> bookmarks      [label="1:N"];
+  profiles       -> notifications  [label="1:N"];
+}

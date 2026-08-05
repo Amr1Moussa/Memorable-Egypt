@@ -1,0 +1,53 @@
+# Supabase CLI project configuration.
+# Docs: https://supabase.com/docs/guides/local-development
+#
+# The remote project is linked with `supabase link --project-ref <ref>`
+# before pushing migrations. Locally, `supabase db reset` reapplies the
+# full migration suite + seed deterministically.
+
+project_id = "memorable-egypt"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 17
+
+[db.pooler]
+enabled = true
+port = 54329
+pool_mode = "transaction"
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["http://localhost:3000/auth/callback"]
+jwt_expiry = 3600
+refresh_token_rotation = true
+security_manual_linking = true
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = true
+
+[auth.external.google]
+enabled = true
+# Client ID/secret are injected at runtime via the Supabase dashboard or
+# `supabase secrets set`. Placeholders satisfy config validation locally;
+# real credentials never get committed.
+client_id = "env(SUPABASE_AUTH_GOOGLE_CLIENT_ID)"
+client_secret = "env(SUPABASE_AUTH_GOOGLE_CLIENT_SECRET)"
+
+[storage]
+enabled = true
+file_size_limit = "10MB"
+
+[realtime]
+enabled = false

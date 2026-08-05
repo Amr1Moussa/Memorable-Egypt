@@ -1,5 +1,6 @@
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { clientEnv, serverEnv } from "@/lib/env";
+import type { Database } from "@/lib/supabase/types";
 
 /**
  * Admin (service-role) Supabase client.
@@ -17,7 +18,7 @@ import { clientEnv, serverEnv } from "@/lib/env";
  * Source: doc 21 (Security), doc 05 (System Architecture).
  */
 export function createAdminClient() {
-  return createServiceClient(
+  return createServiceClient<Database>(
     clientEnv.NEXT_PUBLIC_SUPABASE_URL,
     serverEnv.SUPABASE_SERVICE_ROLE_KEY,
     {
