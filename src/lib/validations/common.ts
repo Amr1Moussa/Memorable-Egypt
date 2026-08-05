@@ -47,16 +47,18 @@ export const slugSchema = z
   );
 
 /**
- * Username rules (doc 12): 3–30 chars, letters/numbers/underscores,
- * case-insensitive. Reserved names are rejected in `features/auth`.
+ * Username rules (doc 12 + Phase 2.3 #2): 3–30 chars, lowercase letters /
+ * numbers / underscores only. Input is normalized (trim + lowercase) by
+ * `normalizeUsername()` before this check, so the regex enforces the stored
+ * form. Reserved names are rejected in `features/profile`.
  */
 export const usernameSchema = z
   .string()
   .min(3)
   .max(30)
   .regex(
-    /^[a-zA-Z0-9_]+$/,
-    "Username may only contain letters, numbers, and underscores",
+    /^[a-z0-9_]+$/,
+    "Username may only contain lowercase letters, numbers, and underscores",
   );
 
 /** Story title (doc 01 — Memory Creation). */

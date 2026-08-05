@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { usernameSchema } from "@/lib/validations/common";
+import { normalizeUsername } from "@/features/profile/constants";
 
 /**
  * Auth validation schemas (Zod). Shared by client forms and server route
@@ -58,11 +59,15 @@ export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 
 /**
  * Profile completion form (first login). Username + display name.
- * Username rules: doc 12 (3–30 chars, letters/numbers/underscores,
- * case-insensitive unique). Reserved names checked in the service.
+ * Username is normalized (trim + lowercase) BEFORE validation per Phase 2.3
+ * requirement #2, then checked against the lowercase-only format. Reserved
+ * names are checked in the service.
  */
 export const completeProfileSchema = z.object({
-  username: usernameSchema,
+  username: z
+    .string()
+    .transform((v) => normalizeUsername(v))
+    .pipe(usernameSchema),
   displayName: z
     .string()
     .trim()

@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { ConflictError, ValidationError } from "@/lib/errors";
-import { RESERVED_USERNAMES } from "./constants";
+import { RESERVED_USERNAMES, normalizeUsername } from "./constants";
 import type { CompleteProfileInput } from "@/features/auth/schemas";
 
 /**
@@ -29,27 +29,30 @@ export async function checkUsername(
   username: string,
   currentUserId?: string,
 ): Promise<UsernameCheckResult> {
-  const normalized = username.trim();
+  // Normalize FIRST (Phase 2.3 requirement #2): trim + lowercase.
+  const normalized = normalizeUsername(username);
 
   if (normalized.length < 3 || normalized.length > 30) {
     return { available: false, reason: "Username must be 3–30 characters." };
   }
-  if (!/^[a-zA-Z0-9_]+$/.test(normalized)) {
+  if (!/^[a-z0-9_]+$/.test(normalized)) {
     return {
       available: false,
-      reason: "Only letters, numbers, and underscores are allowed.",
+      reason: "Only lowercase letters, numbers, and underscores are allowed.",
     };
   }
-  if (RESERVED_USERNAMES.has(normalized.toLowerCase())) {
+  if (RESERVED_USERNAMES.has(normalized)) {
     return { available: false, reason: "That username is reserved." };
   }
 
-  // Case-insensitive availability check against the DB index.
+  // Availability check against the DB. We store normalized (lowercase)
+  // usernames, so an exact match is sufficient (migration 0011 trigger
+  // enforces this on write).
   const supabase = await createClient();
   let query = supabase
     .from("profiles")
     .select("id")
-    .ilike("username", normalized);
+    .eq("username", normalized);
 
   // Allow the current user to "re-check" their own username.
   if (currentUserId) {
@@ -88,7 +91,9 @@ export async function completeProfile(
   const { error } = await supabase
     .from("profiles")
     .update({
-      username: input.username.trim(),
+      // Store the normalized (lowercase, trimmed) form — the DB trigger also
+      // enforces this, but normalizing here keeps the input clean.
+      username: normalizeUsername(input.username),
       display_name: input.displayName.trim(),
       updated_at: new Date().toISOString(),
     })

@@ -40,12 +40,20 @@ export interface AuditInput {
   /** Entity type — usually "user" for auth events. */
   entityType?: string;
   entityId?: string | null;
+  /**
+   * Optional id correlating audit entries from a single user action. If
+   * omitted, a new UUID is generated so every entry is traceable. Pass the
+   * same id across related events (e.g. login_success + admin_login) to group
+   * them. (Phase 2.3 requirement #1.)
+   */
+  requestId?: string;
   /** Optional structured metadata. Never put secrets/PII here. */
   metadata?: Record<string, unknown>;
 }
 
 export async function logAuditEvent(input: AuditInput): Promise<void> {
   try {
+    const requestId = input.requestId ?? crypto.randomUUID();
     const admin = createAdminClient();
     await admin.from("audit_log").insert({
       actor_id: input.actorId ?? null,
@@ -53,6 +61,7 @@ export async function logAuditEvent(input: AuditInput): Promise<void> {
       entity_type: input.entityType ?? "user",
       entity_id: input.entityId ?? input.actorId ?? null,
       metadata: (input.metadata ?? null) as Json,
+      request_id: requestId,
     });
   } catch (error) {
     // Audit failure must never break the operation it recorded.

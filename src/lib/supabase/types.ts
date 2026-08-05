@@ -582,6 +582,7 @@ export interface Database {
           entity_type: string;
           entity_id: string | null;
           metadata: Json | null;
+          request_id: string | null;
           created_at: string;
         };
         Insert: {
@@ -591,6 +592,7 @@ export interface Database {
           entity_type: string;
           entity_id?: string | null;
           metadata?: Json | null;
+          request_id?: string | null;
           created_at?: string;
         };
         Update: {
@@ -600,6 +602,7 @@ export interface Database {
           entity_type?: string;
           entity_id?: string | null;
           metadata?: Json | null;
+          request_id?: string | null;
           created_at?: string;
         };
         Relationships: [];

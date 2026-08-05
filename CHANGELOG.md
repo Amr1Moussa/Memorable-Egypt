@@ -8,6 +8,49 @@ for released versions. Phases track the build toward the 1.0.0 public launch.
 
 ## [Unreleased]
 
+### Phase 2.3 — Storage ✓
+
+#### Added
+- **Migration 0011** — `audit_log.request_id` (nullable, indexed) for
+  traceability; DB-level username normalization trigger (trim + lowercase +
+  format check) complementing the app layer.
+- **Migration 0012** — three storage buckets (`avatars`, `memory-images`
+  public; `payment-receipts` private) with per-object RLS policies enforcing
+  owner-write and admin-only receipt access.
+- **Storage feature** (`features/storage/`):
+  - `services.ts` — `uploadMemoryImage`, `uploadAvatar`, `uploadReceipt`:
+    validate → ownership check → UUID path → store original → read dimensions.
+  - `url.ts` — `getPublicUrl(bucket, path, variant?)` with the future-variants
+    abstraction (every variant returns the original today; Sharp/Supabase
+    Image Transformations slot in later without API change).
+  - `validation.ts` — MIME + size checks against configurable settings.
+  - `dimensions.ts` — server-side dimension reading via `image-size`.
+  - `metadata.ts` — persist `memory_media` rows (width/height/mime/size).
+- **Username normalization** — `normalizeUsername()` (trim + lowercase) threaded
+  through the profile service, auth schema, and DB trigger.
+- **API routes** — `/api/v1/media/avatar`, `/api/v1/media/upload` (multipart,
+  rate-limited, doc-08 envelope).
+- **Components** — `ImageUploader` (multi-file, preview, advisory client
+  validation), `AvatarUploader` (circular, click-to-replace).
+- **Docs** — `docs/storage-architecture.md` (buckets, flow, RLS, public vs
+  private, naming, metadata model, future transforms).
+
+#### Audit
+- `logAuditEvent()` now accepts/derives `requestId` (crypto.randomUUID when
+  omitted) and persists it on every audit_log row.
+
+#### Design decisions (per founder direction)
+- MVP pipeline stores originals as-is — **no** client-side canvas re-encoding,
+  **no** EXIF stripping. Both are future server-side pipeline concerns.
+- Original filenames never reach storage — UUID paths only.
+- Receipts are NEVER public; served to admins via signed URLs (Phase 5).
+
+#### Verification
+- `tsc --noEmit`, `eslint`, `next build` all pass clean.
+- Route tree includes `/api/v1/media/{avatar,upload}`.
+- ⚠️ Storage upload flow + RLS need click-testing against the live Supabase
+  project (buckets + policies exercise a real project).
+
 ### Phase 2.2 — Authentication, profiles, middleware ✓
 
 #### Added
