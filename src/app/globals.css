@@ -1,26 +1,163 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+
+/*
+ * Memorable Egypt — Design System (doc 11)
+ * -----------------------------------------
+ * All design tokens live here as CSS variables and are surfaced to
+ * Tailwind v4 via the `@theme inline` block. Components must never
+ * hardcode color/spacing/radius values — they reference tokens only.
+ *
+ * The palette is Egypt-inspired (doc 11):
+ *   primary   = Egyptian Sand   #D8B36A
+ *   secondary = Nile Blue       #2C6E91
+ *   accent    = Terracotta      #C76B4F  (Legacy Pins, featured content)
+ *
+ * Dark mode is intentionally excluded from the MVP (doc 11), but the
+ * architecture leaves room: tokens are namespaced under `:root` so a
+ * future `.dark` override layer can be added without touching components.
+ */
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* ---- Brand palette (doc 11) ---- */
+  --color-sand: #d8b36a;
+  --color-sand-foreground: #1f2937;
+
+  --color-nile: #2c6e91;
+  --color-nile-foreground: #ffffff;
+
+  --color-terracotta: #c76b4f;
+  --color-terracotta-foreground: #ffffff;
+
+  /* ---- Surfaces (doc 11) ---- */
+  --color-background: #faf8f3;
+  --color-surface: #ffffff;
+  --color-border: #e7e3da;
+
+  /* ---- Text (doc 11) ---- */
+  --color-foreground: #1f2937;
+  --color-muted-foreground: #6b7280;
+  --color-faint-foreground: #9ca3af;
+
+  /* ---- Semantic colors (doc 11) ---- */
+  --color-success: #22c55e;
+  --color-success-foreground: #ffffff;
+  --color-warning: #f59e0b;
+  --color-warning-foreground: #1f2937;
+  --color-error: #ef4444;
+  --color-error-foreground: #ffffff;
+  --color-info: #3b82f6;
+  --color-info-foreground: #ffffff;
+
+  /* ---- Radius (doc 11) ---- */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+
+  /* ---- Shadow (doc 11) ---- */
+  --shadow-sm: 0 1px 2px 0 rgb(31 41 55 / 0.05);
+  --shadow-md: 0 4px 12px -2px rgb(31 41 55 / 0.08);
+  --shadow-lg: 0 12px 32px -8px rgb(31 41 55 / 0.12);
+
+  /* ---- shadcn/ui primitive aliases ----
+   * shadcn components read these specific token names; we map them onto
+   * the brand palette above so the whole UI stays on-brand. */
+  --card: var(--color-surface);
+  --card-foreground: var(--color-foreground);
+  --popover: var(--color-surface);
+  --popover-foreground: var(--color-foreground);
+  --primary: var(--color-sand);
+  --primary-foreground: var(--color-sand-foreground);
+  --secondary: var(--color-nile);
+  --secondary-foreground: var(--color-nile-foreground);
+  --accent: var(--color-terracotta);
+  --accent-foreground: var(--color-terracotta-foreground);
+  --muted: #f3efe6;
+  --muted-foreground: var(--color-muted-foreground);
+  --destructive: var(--color-error);
+  --destructive-foreground: var(--color-error-foreground);
+  --input: var(--color-border);
+  --ring: var(--color-nile);
+  --radius: var(--radius-lg);
 }
 
+/*
+ * `@theme inline` exposes tokens to Tailwind v4 utilities. After this,
+ * classes like `bg-sand`, `text-nile`, `border-border`, `rounded-lg`
+ * are all generated from the variables above.
+ */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: var(--color-background);
+  --color-foreground: var(--color-foreground);
+  --color-surface: var(--color-surface);
+
+  --color-sand: var(--color-sand);
+  --color-sand-foreground: var(--color-sand-foreground);
+  --color-nile: var(--color-nile);
+  --color-nile-foreground: var(--color-nile-foreground);
+  --color-terracotta: var(--color-terracotta);
+  --color-terracotta-foreground: var(--color-terracotta-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--color-muted-foreground);
+  --color-faint-foreground: var(--color-faint-foreground);
+
+  --color-success: var(--color-success);
+  --color-warning: var(--color-warning);
+  --color-error: var(--color-error);
+  --color-info: var(--color-info);
+
+  --color-border: var(--color-border);
+  --color-input: var(--color-border);
+  --color-ring: var(--color-nile);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/*
+ * Tailwind v4 base layer tweaks. `@layer base` is the documented way to
+ * register base styles alongside the framework defaults.
+ */
+@layer base {
+  * {
+    border-color: var(--color-border);
   }
-}
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Visible focus for keyboard users (doc 10/11 — WCAG 2.1 AA). */
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
 }
