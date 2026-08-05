@@ -36,22 +36,31 @@ export const GENESIS_DEFAULTS = {
 /** Payment reference prefix (doc 15 — `ME-2026-000001`). */
 export const PAYMENT_REFERENCE_PREFIX = "ME";
 
-/** Receipt upload constraints (doc 15). */
+// ---------------------------------------------------------------------------
+// Storage limits are now configurable via the `settings` table (migration
+// 0010, doc 22). The documented DEFAULTS live in
+// `features/settings/constants.ts` and are read at runtime through the
+// settings service. The exports below are kept ONLY as static fallbacks for
+// client-side validation (the source of truth is settings + server checks).
+// Prefer `features/settings` for any new code.
+// ---------------------------------------------------------------------------
+
+/** @deprecated use features/settings service + STORAGE_DEFAULTS */
 export const RECEIPT_UPLOAD = {
-  maxBytes: 10 * 1024 * 1024, // 10 MB
+  maxBytes: 10 * 1024 * 1024, // 10 MB (doc 15)
   acceptedMime: ["image/png", "image/jpeg", "application/pdf"],
   acceptedExtensions: [".png", ".jpg", ".jpeg", ".pdf"],
 } as const;
 
-/** Memory image constraints (doc 16). */
+/** @deprecated use features/settings service + STORAGE_DEFAULTS */
 export const MEMORY_IMAGE = {
   maxFiles: 10,
-  maxBytes: 10 * 1024 * 1024, // 10 MB
+  maxBytes: 10 * 1024 * 1024, // 10 MB (doc 16)
   acceptedMime: ["image/jpeg", "image/png", "image/webp"],
 } as const;
 
-/** Avatar constraints (doc 16). */
+/** @deprecated use features/settings service + STORAGE_DEFAULTS */
 export const AVATAR = {
-  maxBytes: 5 * 1024 * 1024, // 5 MB
+  maxBytes: 5 * 1024 * 1024, // 5 MB (doc 16)
   acceptedMime: ["image/jpeg", "image/png", "image/webp"],
 } as const;

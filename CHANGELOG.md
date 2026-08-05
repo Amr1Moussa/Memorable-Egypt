@@ -8,6 +8,60 @@ for released versions. Phases track the build toward the 1.0.0 public launch.
 
 ## [Unreleased]
 
+### Phase 2.2 — Authentication, profiles, middleware ✓
+
+#### Added
+- **Migration 0010** — `general.maintenance_mode`,
+  `general.registration_enabled`, and a full `storage.*` category moving
+  upload limits (memory images, avatars, receipts) out of app constants into
+  admin-configurable settings.
+- **Audit service** (`lib/audit.ts`) — `logAuditEvent()` writing the 8
+  required auth events via the service-role client (users can't forge audit
+  entries): registered, email_verified, login_success, login_failed,
+  password_reset_requested, password_changed, role_changed, admin_login.
+  Failures are logged but never break the recorded operation.
+- **Authorization guards** (`lib/authorization.ts`) — `requireUser()`,
+  `requireAdmin()`, `requireOwnerOrAdmin()` resolving user + profile or
+  throwing `AppError` (→ 401/403). Defense-in-depth alongside RLS.
+- **Settings service** (`features/settings/`) — public-only in-memory cache
+  (30s TTL, invalidated on writes); sensitive categories (payments bank
+  details) are never cached or exposed publicly; `getStorageLimits()` reads
+  limits from settings with documented defaults.
+- **Auth feature** (`features/auth/`):
+  - Zod schemas (shared client/server) for signup, login, forgot/reset
+    password, profile completion.
+  - Server services wrapping Supabase Auth (single source of truth for
+    identity) with audit logging on every outcome + `registration_enabled`
+    gate on signup.
+  - `AuthForm` (RHF + Zod, shared by login/signup), `GoogleButton`,
+    `ForgotPasswordForm`, `ResetPasswordForm`.
+  - `useCurrentUser`, `useAuthActions` hooks.
+- **Profile feature** (`features/profile/`) — username availability check
+  (case-insensitive, reserved-names list), `completeProfile()` for first
+  login, `isProfileIncomplete()` for the interstitial.
+- **Pages** — login, register, forgot-password, reset-password, verify-email
+  (all noindex); `/auth/callback` (OAuth + email-verification + recovery code
+  exchange); `/maintenance` and `/forbidden`.
+- **API routes** — `/api/v1/auth/{signup,login,logout,reset-password,
+  update-password,google}` with rate limiting + the doc-08 envelope.
+- **Middleware** (`src/middleware.ts`) — Supabase SSR session refresh,
+  maintenance-mode gate (admins bypass), registration-aware, route-group
+  protection ((auth)/(app)/(admin)), admin-role check → /forbidden.
+
+#### Changed
+- `src/lib/constants/app.ts` storage constants marked `@deprecated`; the
+  settings table is now the source of truth, constants kept only as static
+  fallbacks for client-side validation.
+- Supabase clients (`client`/`server`/`admin`) now typed against the
+  hand-authored `Database` interface; full type inference on all queries.
+
+#### Verification
+- `tsc --noEmit`, `eslint`, `next build` all pass clean.
+- Route tree confirms all auth pages, API routes, callback, and middleware
+  (`ƒ Proxy (Middleware)`) compiled.
+- ⚠️ End-to-end auth flows (real OAuth, real email verification) require
+  testing against the live Supabase project — see the post-approval checklist.
+
 ### Phase 2.1 — Database schema ✓
 
 #### Added
