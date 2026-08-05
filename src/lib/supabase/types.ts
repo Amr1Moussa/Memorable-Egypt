@@ -57,6 +57,19 @@ export type SettingType = "string" | "number" | "boolean" | "json";
 
 export type Json = string | number | boolean | null | { [k: string]: Json } | Json[];
 
+/** Row shape returned by the locations_in_viewport / locations_nearby RPCs. */
+export interface LocationViewportRow {
+  id: string;
+  name: string;
+  slug: string;
+  tier: number;
+  latitude: number;
+  longitude: number;
+  memory_count: number;
+  legacy_count: number;
+  status: string;
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -614,6 +627,28 @@ export interface Database {
       is_admin: { Args: Record<string, never>; Returns: boolean };
       is_owner: { Args: { owner_id: string }; Returns: boolean };
       slugify: { Args: { input: string }; Returns: string };
+      locations_in_viewport: {
+        Args: {
+          west: number;
+          south: number;
+          east: number;
+          north: number;
+          filter_tier?: number | null;
+          filter_governorate?: string | null;
+          filter_city?: string | null;
+          result_limit?: number;
+        };
+        Returns: LocationViewportRow[];
+      };
+      locations_nearby: {
+        Args: {
+          lat: number;
+          lng: number;
+          radius_m?: number;
+          result_limit?: number;
+        };
+        Returns: LocationViewportRow[];
+      };
     };
     Enums: {
       user_role: UserRole;

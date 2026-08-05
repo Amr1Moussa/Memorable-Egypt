@@ -8,6 +8,50 @@ for released versions. Phases track the build toward the 1.0.0 public launch.
 
 ## [Unreleased]
 
+### Phase 3 — Interactive Egypt Map & Location System ✓
+
+#### Added
+- **Migration 0013** — two PostGIS RPC functions (`locations_in_viewport`
+  via `ST_Covers`/`ST_MakeEnvelope`, `locations_nearby` via `ST_DWithin`)
+  powering fast server-side spatial queries.
+- **Map feature** (`features/map/`) — pure rendering, no business logic:
+  - `useMapbox` — Mapbox GL JS lifecycle (create/cleanup/flyTo), Egypt bounds.
+  - `useViewportLocations` — debounced (350ms) viewport → locations fetch;
+    loads only what's visible, never the full dataset.
+  - `useGeolocation` — browser geolocation with non-blocking denial handling.
+  - `MapView` — GeoJSON source + native clustering (sized by point_count),
+    tier-colored markers, click-to-expand clusters, popups, geolocate button,
+    loading overlay. Receives a `fetcher` + emits `onSelectLocation`.
+- **Locations feature** (`features/locations/`) — geographic data layer
+  separate from memory logic: viewport/nearby/search/by-slug/governorates
+  services, Zod schemas, `MapLocation`/`LocationDetail` types.
+- **Search feature** (`features/search/`) — `searchLocationsClient` with a
+  generic interface shaped for future fuzzy/AI drop-in; `LocationSearch`
+  component (debounced, abortable, loading/empty/result states).
+- **API routes** — `/api/v1/locations/{viewport,nearby,search}`, rate-limited,
+  doc-08 envelope.
+- **Explore page** — map + tier-filter sidebar + search + location preview.
+- **Location pages** (`/locations/[slug]`) — SEO Server Component with full
+  metadata, OpenGraph/Twitter, Schema.org `Place` JSON-LD, tier badge,
+  coordinates, counts, pricing hint; memory list is a placeholder (Phase 4).
+- **Docs** — `docs/map-architecture.md` (rendering, viewport flow, clustering,
+  search, geolocation, performance, future scalability).
+
+#### Verification
+- `tsc --noEmit`, `eslint`, `next build` all pass clean.
+- Route tree includes `/explore`, `/locations/[slug]`, and three
+  `/api/v1/locations/*` routes.
+- ⚠️ Map rendering, clustering, viewport loading, search, filters,
+  geolocation, and responsive behavior need click-testing against the live
+  Supabase project with a valid Mapbox token.
+
+#### Notable fixes during build
+- Aliased Mapbox `Map` → `MapboxMap` to avoid collision with JS built-in `Map`.
+- Passed the map **ref** (not `.current`) into `useViewportLocations` to
+  satisfy React 19's `react-hooks/refs` rule (no ref access during render).
+- Restructured search/loader state to satisfy `react-hooks/set-state-in-effect`.
+- Added the two RPC functions to the typed `Database` interface.
+
 ### Phase 2.3 — Storage ✓
 
 #### Added
