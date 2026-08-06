@@ -43,6 +43,14 @@ export type ReportReason =
   | "fake_location"
   | "other";
 export type ReportStatus = "pending" | "approved" | "rejected";
+export type PublicationStatus =
+  | "draft"
+  | "pending_moderation"
+  | "awaiting_payment"
+  | "receipt_uploaded"
+  | "pending_verification"
+  | "published"
+  | "rejected";
 export type ReactionType = "love" | "nostalgic" | "emotional" | "inspiring";
 export type NotificationType =
   | "comment"
@@ -222,6 +230,7 @@ export interface Database {
           pin_type: PinType;
           visibility: Visibility;
           status: ContentStatus;
+          publication_status: PublicationStatus;
           ai_enhanced: boolean;
           is_featured: boolean;
           featured_at: string | null;
@@ -241,6 +250,7 @@ export interface Database {
           pin_type?: PinType;
           visibility?: Visibility;
           status?: ContentStatus;
+          publication_status?: PublicationStatus;
           ai_enhanced?: boolean;
           is_featured?: boolean;
           featured_at?: string | null;
@@ -260,6 +270,7 @@ export interface Database {
           pin_type?: PinType;
           visibility?: Visibility;
           status?: ContentStatus;
+          publication_status?: PublicationStatus;
           ai_enhanced?: boolean;
           is_featured?: boolean;
           featured_at?: string | null;
@@ -659,6 +670,7 @@ export interface Database {
       content_status: ContentStatus;
       report_reason: ReportReason;
       report_status: ReportStatus;
+      publication_status: PublicationStatus;
       reaction_type: ReactionType;
       notification_type: NotificationType;
     };

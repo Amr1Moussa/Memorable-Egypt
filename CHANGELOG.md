@@ -8,6 +8,48 @@ for released versions. Phases track the build toward the 1.0.0 public launch.
 
 ## [Unreleased]
 
+### Phase 4 — Memory creation & publishing ✓
+
+#### Added
+- **Migration 0014** — `publication_status` enum + column on `memories`,
+  distinct from the moderation `status`, tracking the publish lifecycle.
+- **Memories feature** (`features/memories/`):
+  - State machine (`constants.ts`): `TRANSITIONS` + `canTransition` enforcing
+    the documented valid paths; invalid transitions rejected server-side.
+  - Services: `createDraft`, `getMyMemory`, `patchDraft`, `setMemoryTags`,
+    `deleteDraft`, `listMyMemories`, `publishMemory` (free/paid paths),
+    `getPublishedMemoryBySlug` (joined author/location/category/media/tags).
+  - Schemas: draft, patch, publish, tags (Zod, shared client/server).
+  - `useAutoSave` hook: debounced dirty-save (1.5s), status feedback,
+    `beforeunload` unsaved-changes warning, `flush()` for pre-publish.
+  - `MemoryEditor` (distraction-free title/story/category/visibility + live
+    char counters + validation), `TagInput` (add/remove, max 10),
+    `MemoryCard` (list), `MemoryPreview` (preview step).
+- **API routes** — `/api/v1/memories` (POST create, GET list),
+  `/api/v1/memories/[id]` (GET/PATCH/DELETE), `/api/v1/memories/[id]/publish`,
+  `/api/v1/categories` (public list).
+- **Create wizard** (`/create`) — 5-step flow: location → story → images →
+  pin type → preview → publish (free) / continue to payment.
+- **My memories** (`/memories`) — author's drafts + published list.
+- **Public memory page** (`/memories/[slug]`) — SEO Server Component:
+  `generateMetadata` (title/description/canonical/OG/Twitter), Schema.org
+  `Article` JSON-LD, lazy-loaded gallery, author, location link, tags.
+- **Docs** — `docs/memory-architecture.md` (lifecycle, state machine, draft
+  flow, publish flow, image flow, slug generation, SEO, performance).
+
+#### Design decisions (per founder direction)
+- Comments, reactions, bookmarks remain disabled (ADR D6).
+- Free Genesis pins auto-publish in the MVP (admin content moderation reserved
+  via `pending_moderation` for Phase 6).
+- Image editing/filters excluded; original bytes stored (Phase 2.3 abstraction).
+
+#### Verification
+- `tsc --noEmit`, `eslint`, `next build` all pass clean.
+- Route tree includes `/create`, `/memories`, `/memories/[slug]`, and all
+  `/api/v1/memories/*` + `/api/v1/categories` routes.
+- ⚠️ Draft creation, auto-save, publishing, image uploads, preview, state
+  transitions, and SEO pages need click-testing against the live project.
+
 ### Phase 3 — Interactive Egypt Map & Location System ✓
 
 #### Added
