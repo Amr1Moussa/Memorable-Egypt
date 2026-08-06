@@ -8,6 +8,39 @@ for released versions. Phases track the build toward the 1.0.0 public launch.
 
 ## [Unreleased]
 
+### Phase 5 — Payments ✓
+
+#### Added
+- **Payments feature** (`features/payments/`):
+  - `pricing.ts` — `computePrice(tier, pinType)` server-authoritative engine
+    reading all 8 price cells from settings; client never sends a price.
+  - `genesis.ts` — Genesis Campaign: eligibility check, one-per-account
+    enforcement (CAS on `genesis_claimed`), counter management, auto-close at 100.
+  - `service.ts` — `createPayment` (price computed server-side, reference
+    generated, duplicates prevented), `attachReceipt` (private storage +
+    state advance), `getPayment`, `listPaymentHistory`, `getPaymentMethods`.
+  - `constants.ts` — payment state machine (`canTransitionPayment`, `isLocked`).
+  - Schemas, types, `PaymentStatusBadge`, `ReceiptUploader`.
+- **API routes** — `/api/v1/payments/{calculate,checkout,[id],[id]/receipt,history}`.
+- **Memories publish wired** — free path claims a Genesis pin + publishes;
+  paid path delegates to `createPayment` (advances to `awaiting_payment`).
+- **Payment pages** — `/payments` (history), `/payments/[id]` (detail:
+  amount due, InstaPay + QNB instructions, receipt upload, status,
+  rejection reason, processing/done states).
+- **Docs** — `docs/payment-architecture.md`.
+
+#### Design decisions (per founder direction)
+- Manual verification only (doc 15); provider-agnostic for future Paymob/Fawry/Stripe.
+- Receipts always private (private bucket + admin-only RLS, no public URL helper).
+- Approved/published records locked (no user edits).
+
+#### Verification
+- `tsc --noEmit`, `eslint`, `next build` all pass clean.
+- Route tree includes `/payments`, `/payments/[id]`, and all five
+  `/api/v1/payments/*` routes.
+- ⚠️ Pricing engine, Genesis rules, payment transitions, receipt uploads,
+  and history need click-testing against the live project.
+
 ### Phase 4 — Memory creation & publishing ✓
 
 #### Added

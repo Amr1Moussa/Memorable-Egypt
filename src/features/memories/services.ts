@@ -340,28 +340,40 @@ export async function publishMemory(
   }
 
   const update: MemoryUpdate = {
-    publication_status: target as PublicationStatus,
     pin_type: pinType,
     updated_at: new Date().toISOString(),
   };
 
-  // For the free path, immediately flip to published (Genesis auto-publishes
-  // pending moderation in MVP — admin moderation happens in Phase 6, but the
-  // memory goes live so the product flow is complete). Per doc 15, free pins
-  // are "approved" by virtue of the campaign. We keep the pending_moderation
-  // step in the state machine for Phase 6 but auto-advance for the MVP flow.
   if (path === "free") {
+    // Genesis path: verify eligibility + claim the slot (Phase 5 #2), then
+    // publish immediately (auto-moderated in MVP; admin review in Phase 6).
+    const { checkGenesisEligibility, claimGenesisPin } = await import(
+      "@/features/payments/genesis"
+    );
+    const eligibility = await checkGenesisEligibility(userId);
+    if (!eligibility.eligible) {
+      throw new BusinessRuleError(
+        eligibility.reason ??
+          "The free Genesis campaign isn't available for this memory.",
+      );
+    }
+    await claimGenesisPin(userId);
     update.publication_status = "published";
     update.published_at = new Date().toISOString();
+
+    const { error: upErr } = await supabase
+      .from("memories")
+      .update(update)
+      .eq("id", memoryId);
+    if (upErr) throw upErr;
+    return { publicationStatus: "published" };
   }
 
-  const { error: upErr } = await supabase
-    .from("memories")
-    .update(update)
-    .eq("id", memoryId);
-  if (upErr) throw upErr;
-
-  return { publicationStatus: update.publication_status as string };
+  // Paid path: delegate to the payment service, which computes the price
+  // server-side, generates a reference, and advances to awaiting_payment.
+  const { createPayment } = await import("@/features/payments/service");
+  await createPayment(memoryId, pinType);
+  return { publicationStatus: "awaiting_payment" };
 }
 
 // ---------------------------------------------------------------------------

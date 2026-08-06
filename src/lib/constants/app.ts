@@ -15,6 +15,8 @@ export const ROUTES = {
   search: "/search",
   create: "/create",
   profile: "/profile",
+  memories: "/memories",
+  payments: "/payments",
   settings: "/settings",
   login: "/login",
   register: "/register",
