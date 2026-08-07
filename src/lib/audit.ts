@@ -29,6 +29,16 @@ export const AUDIT_ACTIONS = {
   PASSWORD_CHANGED: "auth.password_changed",
   ROLE_CHANGED: "user.role_changed",
   ADMIN_LOGIN: "auth.admin_login",
+  // Admin moderation + management actions (Phase 6)
+  PAYMENT_APPROVED: "payment.approved",
+  PAYMENT_REJECTED: "payment.rejected",
+  MEMORY_HIDDEN: "memory.hidden",
+  MEMORY_RESTORED: "memory.restored",
+  MEMORY_DELETED: "memory.deleted",
+  MEMORY_FEATURED: "memory.featured",
+  LOCATION_UPDATED: "location.updated",
+  SETTINGS_CHANGED: "settings.changed",
+  REPORT_RESOLVED: "report.resolved",
 } as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];

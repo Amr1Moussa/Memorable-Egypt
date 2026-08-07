@@ -8,6 +8,50 @@ for released versions. Phases track the build toward the 1.0.0 public launch.
 
 ## [Unreleased]
 
+### Phase 6 — Admin Dashboard, Moderation, Analytics ✓
+
+#### Added
+- **Admin feature** (`features/admin/`):
+  - `concurrency.ts` — optimistic concurrency: `concurrencyUpdate` (check
+    `updated_at` → update → verify), `assertBatchUnchanged` for bulk ops.
+  - `services/dashboard.ts` — metrics (parallel count queries + revenue
+    aggregations) + activity feed from the existing `audit_log` (no separate
+    activity system).
+  - `services/payments.ts` — payment queue, `approvePayment` (state transition
+    + memory publish + audit), `rejectPayment` (reason + return to
+    awaiting_payment + audit), receipt signed-URL generation.
+  - `services/moderation.ts` — memory list/moderate (hide/restore/delete/
+    feature), `bulkModerateMemories`, reports list/resolve, `bulkResolveReports`.
+  - `services/manage.ts` — users list (with auth emails + counts), locations
+    list/update/approve, settings list/update, full analytics.
+  - Schemas, types, `ActivityFeed` component.
+- **8 admin pages** — dashboard (metrics + activity + quick links), payments
+  queue (approve/reject), memories moderation, reports queue, users table,
+  locations management (tier/status inline editors), settings editors,
+  analytics dashboards.
+- **7 admin API routes** — payments approve/reject, memories moderate/
+  bulk-moderate, reports resolve, locations update, settings update.
+- **Admin layout + sidebar** — role-guarded, 8-section navigation.
+- **Components** — `StatCard`, `AdminSidebar`, `ActivityFeed`, inline action
+  components (payment/memory/location/setting editors).
+- **Audit actions extended** — `payment.approved/rejected`, `memory.hidden/
+  restored/deleted/featured`, `location.updated`, `settings.changed`,
+  `report.resolved` added to the canonical `AUDIT_ACTIONS`.
+- **Docs** — `docs/admin-architecture.md`.
+
+#### Design decisions (per founder direction)
+- Optimistic concurrency on all critical admin actions (Phase 6 #11).
+- Bulk operations for memory moderation + report resolution (Phase 6 #12).
+- Activity feed reuses `audit_log` — no separate activity system (Phase 6 #13).
+- User deletion not implemented; suspend is future-ready (Phase 6 #4).
+- Sensitive settings masked in public APIs, editable only via admin UI.
+
+#### Verification
+- `tsc --noEmit`, `eslint`, `next build` all pass clean.
+- Route tree: 8 admin pages + 7 admin API routes.
+- ⚠️ Admin authentication, payment approval, moderation, settings, analytics,
+  and audit logs need click-testing against the live project.
+
 ### Phase 5 — Payments ✓
 
 #### Added
