@@ -8,6 +8,42 @@ for released versions. Phases track the build toward the 1.0.0 public launch.
 
 ## [Unreleased]
 
+### Phase 7 — SEO, Testing, Deployment ✓
+
+#### Added
+- **SEO** — `robots.ts` (allow public, block admin/api/auth/app routes),
+  `sitemap.ts` (dynamic: home, explore, locations, memories, categories,
+  legal pages). Both verified in the build route tree.
+- **Security headers** — CSP, X-Frame-Options (DENY), X-Content-Type-Options
+  (nosniff), Referrer-Policy, Permissions-Policy, HSTS in `next.config.ts`.
+- **Test suite** (Vitest, 61 tests, 7 files):
+  - Pricing: reference formatting, tier validation.
+  - Payment state machine: all transitions + lock states.
+  - Memory state machine: publish paths, editability.
+  - Slug generation: lowercasing, collapsing, trimming (found + fixed a bug).
+  - Username normalization: trim, lowercase, reserved names.
+  - Rate limiter: limits, remaining, isolation, window reset.
+  - Error hierarchy: status codes, codes, envelope, wrapping.
+- **Monitoring** — `@sentry/nextjs` with graceful degradation (no-op without
+  DSN); `instrumentation.ts` for server/edge error capture; `.env.example`
+  updated with `SENTRY_DSN` + `SENTRY_TRACES_SAMPLE_RATE`.
+- **Deployment** — `scripts/check-env.ts` (validates all required + optional
+  env vars, warns on placeholders/non-HTTPS); `docs/production-readiness.md`
+  (architecture summary, deployment checklist, rollback checklist, monitoring
+  stack, security checklist, performance checklist, testing summary, known
+  limitations, future improvements).
+
+#### Fixed
+- `slugify` bug: underscore was stripped before the collapse step, so
+  `a___b` produced `ab` instead of `a-b`. Test caught it; regex fixed to
+  preserve `_` through to the collapse step.
+
+#### Verification
+- `tsc --noEmit`, `eslint`, `next build`, `vitest run` (61/61) all pass.
+- Build route tree includes `/robots.txt` and `/sitemap.xml`.
+- ⚠️ Lighthouse scores, Sentry end-to-end, and deployment verification
+  require a live production deployment.
+
 ### Phase 6 — Admin Dashboard, Moderation, Analytics ✓
 
 #### Added

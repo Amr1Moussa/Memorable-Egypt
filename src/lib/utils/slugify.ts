@@ -13,7 +13,7 @@ export function slugify(input: string): string {
     .replace(/[\u0300-\u036f]/g, "") // strip combining diacritics
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9\s-]/g, "") // drop anything non [a-z0-9 space-]
+    .replace(/[^a-z0-9\s_-]/g, "") // drop anything non [a-z0-9 space-_]
     .replace(/[\s_-]+/g, "-") // collapse whitespace/underscores to one hyphen
     .replace(/^-+|-+$/g, ""); // trim leading/trailing hyphens
 }
