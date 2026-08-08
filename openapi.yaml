@@ -1,0 +1,750 @@
+openapi: 3.1.0
+info:
+  title: Memorable Egypt API
+  version: 1.0.0
+  description: |
+    REST API for Memorable Egypt — a location-first platform where users
+    preserve memories at real Egyptian locations.
+
+    ## Authentication
+    Most endpoints require a Supabase JWT session cookie. Admin endpoints
+    additionally require the `admin` role on the user's profile.
+
+    ## Response Envelope
+    All responses follow the format:
+    ```json
+    { "success": true, "data": {}, "message": "..." }
+    ```
+    Errors:
+    ```json
+    { "success": false, "error": { "code": "VALIDATION_ERROR", "message": "..." } }
+    ```
+
+    ## Rate Limiting
+    - Public: 100 req/min
+    - Authenticated: 300 req/min
+    - AI (future): 20 req/hour/user
+  contact:
+    email: memorable.egypt@gmail.com
+
+servers:
+  - url: https://memorableegypt.com
+    description: Production
+  - url: http://localhost:3000
+    description: Local development
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: sb-access-token
+    adminSession:
+      type: apiKey
+      in: cookie
+      name: sb-access-token
+      description: Requires profiles.role = 'admin'
+
+  schemas:
+    SuccessResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean, example: true }
+        data: { type: object }
+        message: { type: string }
+
+    ErrorResponse:
+      type: object
+      required: [success, error]
+      properties:
+        success: { type: boolean, example: false }
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              enum: [VALIDATION_ERROR, UNAUTHORIZED, FORBIDDEN, NOT_FOUND, CONFLICT, RATE_LIMITED, PAYMENT_REQUIRED, BUSINESS_RULE_VIOLATION, EXTERNAL_SERVICE_ERROR, INTERNAL_ERROR]
+            message: { type: string }
+            fieldErrors:
+              type: object
+              additionalProperties:
+                type: array
+                items: { type: string }
+
+    MapLocation:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        slug: { type: string }
+        tier: { type: integer, minimum: 1, maximum: 4 }
+        latitude: { type: number }
+        longitude: { type: number }
+        memoryCount: { type: integer }
+        legacyCount: { type: integer }
+
+    MemoryDraft:
+      type: object
+      required: [locationId, title, story]
+      properties:
+        locationId: { type: string, format: uuid }
+        title: { type: string, minLength: 3, maxLength: 120 }
+        story: { type: string, minLength: 20, maxLength: 10000 }
+        categoryId: { type: string, format: uuid, nullable: true }
+        visibility: { type: string, enum: [public, private, unlisted] }
+        pinType: { type: string, enum: [standard, legacy] }
+        tags: { type: array, items: { type: string }, maxItems: 10 }
+
+    PaymentView:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        reference: { type: string, example: "ME-2026-000001" }
+        memoryId: { type: string, format: uuid }
+        memoryTitle: { type: string }
+        pinType: { type: string, enum: [standard, legacy] }
+        tier: { type: integer }
+        amount: { type: integer, description: "Integer EGP" }
+        status: { type: string }
+        isGenesis: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    PriceBreakdown:
+      type: object
+      properties:
+        tier: { type: integer }
+        pinType: { type: string, enum: [standard, legacy] }
+        amount: { type: integer }
+        currency: { type: string, example: EGP }
+
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    LimitParam:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+
+tags:
+  - name: Auth
+  - name: Locations
+  - name: Memories
+  - name: Media
+  - name: Payments
+  - name: Categories
+  - name: Admin
+
+paths:
+  # ───────────────────────── AUTH ─────────────────────────
+  /api/v1/auth/signup:
+    post:
+      tags: [Auth]
+      summary: Register with email/password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, minLength: 8 }
+            example: { email: "user@example.com", password: "secret123" }
+      responses:
+        "201":
+          description: Account created; verification email sent
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SuccessResponse" }
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /api/v1/auth/login:
+    post:
+      tags: [Auth]
+      summary: Sign in with email/password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        "200":
+          description: Authenticated; session cookie set
+        "422":
+          description: Invalid credentials
+
+  /api/v1/auth/logout:
+    post:
+      tags: [Auth]
+      summary: End the session
+      security: [{ sessionCookie: [] }]
+      responses:
+        "200": { description: Signed out }
+
+  /api/v1/auth/reset-password:
+    post:
+      tags: [Auth]
+      summary: Request a password-reset email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        "200": { description: Reset link sent (always returns success) }
+
+  /api/v1/auth/update-password:
+    post:
+      tags: [Auth]
+      summary: Set a new password (recovery flow)
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password: { type: string, minLength: 8 }
+      responses:
+        "200": { description: Password updated }
+        "422": { description: Invalid password }
+
+  /api/v1/auth/google:
+    get:
+      tags: [Auth]
+      summary: Get the Google OAuth redirect URL
+      parameters:
+        - name: next
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: OAuth URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url: { type: string }
+
+  # ──────────────────────── LOCATIONS ─────────────────────
+  /api/v1/locations/viewport:
+    get:
+      tags: [Locations]
+      summary: Locations inside the current map viewport
+      parameters:
+        - { name: west, in: query, required: true, schema: { type: number } }
+        - { name: south, in: query, required: true, schema: { type: number } }
+        - { name: east, in: query, required: true, schema: { type: number } }
+        - { name: north, in: query, required: true, schema: { type: number } }
+        - { name: zoom, in: query, schema: { type: number } }
+        - { name: tier, in: query, schema: { type: integer, minimum: 1, maximum: 4 } }
+      responses:
+        "200":
+          description: Active locations in viewport
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: object
+                    properties:
+                      locations:
+                        type: array
+                        items: { $ref: "#/components/schemas/MapLocation" }
+
+  /api/v1/locations/nearby:
+    get:
+      tags: [Locations]
+      summary: Locations within a radius of a point
+      parameters:
+        - { name: lat, in: query, required: true, schema: { type: number } }
+        - { name: lng, in: query, required: true, schema: { type: number } }
+        - { name: radius, in: query, schema: { type: integer, default: 10000 } }
+      responses:
+        "200":
+          description: Nearby locations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: object
+                    properties:
+                      locations:
+                        type: array
+                        items: { $ref: "#/components/schemas/MapLocation" }
+
+  /api/v1/locations/search:
+    get:
+      tags: [Locations]
+      summary: Search locations by free text
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string } }
+        - { $ref: "#/components/parameters/PageParam" }
+        - { $ref: "#/components/parameters/LimitParam" }
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: object
+                    properties:
+                      locations:
+                        type: array
+                        items: { $ref: "#/components/schemas/MapLocation" }
+                      total: { type: integer }
+
+  # ──────────────────────── CATEGORIES ────────────────────
+  /api/v1/categories:
+    get:
+      tags: [Categories]
+      summary: List all memory categories
+      responses:
+        "200":
+          description: Categories
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: object
+                    properties:
+                      categories:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id: { type: string }
+                            name: { type: string }
+                            slug: { type: string }
+
+  # ──────────────────────── MEMORIES ──────────────────────
+  /api/v1/memories:
+    post:
+      tags: [Memories]
+      summary: Create a draft memory
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MemoryDraft" }
+      responses:
+        "201":
+          description: Draft created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: object
+                    properties:
+                      id: { type: string, format: uuid }
+        "422": { description: Validation error }
+
+    get:
+      tags: [Memories]
+      summary: List the current user's memories
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: status, in: query, schema: { type: string } }
+        - { $ref: "#/components/parameters/PageParam" }
+        - { $ref: "#/components/parameters/LimitParam" }
+      responses:
+        "200":
+          description: Memory list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: object
+                    properties:
+                      memories: { type: array, items: { type: object } }
+                      total: { type: integer }
+
+  /api/v1/memories/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Memories]
+      summary: Load a memory (owner)
+      security: [{ sessionCookie: [] }]
+      responses:
+        "200": { description: Memory detail }
+        "404": { description: Not found / not owned }
+
+    patch:
+      tags: [Memories]
+      summary: Auto-save / update a draft
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Partial draft fields + optional tags array
+      responses:
+        "200": { description: Saved }
+        "422": { description: Invalid }
+
+    delete:
+      tags: [Memories]
+      summary: Soft-delete a draft
+      security: [{ sessionCookie: [] }]
+      responses:
+        "204": { description: Deleted }
+        "422": { description: Not in an editable state }
+
+  /api/v1/memories/{id}/publish:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      tags: [Memories]
+      summary: Publish a memory (free Genesis or paid path)
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                pinType: { type: string, enum: [standard, legacy] }
+                path: { type: string, enum: [free, paid] }
+            example: { pinType: "standard", path: "free" }
+      responses:
+        "200": { description: Published or awaiting payment }
+        "422": { description: Incomplete or ineligible }
+
+  # ──────────────────────── MEDIA ─────────────────────────
+  /api/v1/media/upload:
+    post:
+      tags: [Media]
+      summary: Upload a memory image
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [memoryId, file]
+              properties:
+                memoryId: { type: string, format: uuid }
+                file: { type: string, format: binary }
+                altText: { type: string }
+      responses:
+        "201": { description: Image stored + metadata persisted }
+        "422": { description: Invalid file / over limit }
+
+  /api/v1/media/avatar:
+    post:
+      tags: [Media]
+      summary: Upload/replace avatar
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        "200": { description: Avatar URL updated }
+
+  # ──────────────────────── PAYMENTS ──────────────────────
+  /api/v1/payments/calculate:
+    post:
+      tags: [Payments]
+      summary: Compute price for tier × pin type (public)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tier, pinType]
+              properties:
+                tier: { type: integer, minimum: 1, maximum: 4 }
+                pinType: { type: string, enum: [standard, legacy] }
+            example: { tier: 3, pinType: "legacy" }
+      responses:
+        "200":
+          description: Price breakdown
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data: { $ref: "#/components/schemas/PriceBreakdown" }
+
+  /api/v1/payments/checkout:
+    post:
+      tags: [Payments]
+      summary: Create a payment record (paid path)
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [memoryId, pinType]
+              properties:
+                memoryId: { type: string, format: uuid }
+                pinType: { type: string, enum: [standard, legacy] }
+      responses:
+        "201":
+          description: Payment created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: object
+                    properties:
+                      payment: { $ref: "#/components/schemas/PaymentView" }
+
+  /api/v1/payments/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Payments]
+      summary: Load a payment + payment-method details
+      security: [{ sessionCookie: [] }]
+      responses:
+        "200": { description: Payment + methods }
+        "404": { description: Not found / not owned }
+
+  /api/v1/payments/{id}/receipt:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      tags: [Payments]
+      summary: Upload a receipt for a payment
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, method]
+              properties:
+                file: { type: string, format: binary }
+                method: { type: string, enum: [instapay, bank_transfer] }
+      responses:
+        "200": { description: Receipt uploaded; payment advanced to receipt_uploaded }
+
+  /api/v1/payments/history:
+    get:
+      tags: [Payments]
+      summary: Current user's payment history
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/PageParam" }
+        - { $ref: "#/components/parameters/LimitParam" }
+      responses:
+        "200":
+          description: Payment history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: object
+                    properties:
+                      payments:
+                        type: array
+                        items: { $ref: "#/components/schemas/PaymentView" }
+                      total: { type: integer }
+
+  # ──────────────────────── ADMIN ─────────────────────────
+  /api/v1/admin/payments/approve:
+    post:
+      tags: [Admin]
+      summary: Approve a payment → publish memory + audit
+      security: [{ adminSession: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [paymentId, expectedUpdatedAt]
+              properties:
+                paymentId: { type: string, format: uuid }
+                expectedUpdatedAt: { type: string, format: date-time }
+      responses:
+        "200": { description: Payment approved; memory published }
+        "409": { description: Concurrency conflict — refresh and retry }
+
+  /api/v1/admin/payments/reject:
+    post:
+      tags: [Admin]
+      summary: Reject a payment with a required reason
+      security: [{ adminSession: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [paymentId, expectedUpdatedAt, reason]
+              properties:
+                paymentId: { type: string, format: uuid }
+                expectedUpdatedAt: { type: string, format: date-time }
+                reason: { type: string, minLength: 3, maxLength: 200 }
+      responses:
+        "200": { description: Payment rejected; returned to awaiting_payment }
+
+  /api/v1/admin/memories/moderate:
+    post:
+      tags: [Admin]
+      summary: Moderate a single memory
+      security: [{ adminSession: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [memoryId, expectedUpdatedAt, action]
+              properties:
+                memoryId: { type: string, format: uuid }
+                expectedUpdatedAt: { type: string, format: date-time }
+                action: { type: string, enum: [hide, restore, delete, feature, unfeature] }
+      responses:
+        "200": { description: Action applied + audited }
+
+  /api/v1/admin/memories/bulk-moderate:
+    post:
+      tags: [Admin]
+      summary: Bulk moderate memories (atomic version check)
+      security: [{ adminSession: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [items, action]
+              properties:
+                items:
+                  type: array
+                  maxItems: 100
+                  items:
+                    type: object
+                    properties:
+                      memoryId: { type: string, format: uuid }
+                      expectedUpdatedAt: { type: string, format: date-time }
+                action: { type: string, enum: [hide, restore, delete] }
+      responses:
+        "200": { description: Bulk action applied }
+
+  /api/v1/admin/reports/resolve:
+    post:
+      tags: [Admin]
+      summary: Resolve a single report or bulk-resolve
+      security: [{ adminSession: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  properties:
+                    reportId: { type: string, format: uuid }
+                    action: { type: string, enum: [approve, reject] }
+                - type: object
+                  properties:
+                    reportIds: { type: array, items: { type: string, format: uuid } }
+                    action: { type: string, enum: [approve, reject] }
+      responses:
+        "200": { description: Report(s) resolved + audited }
+
+  /api/v1/admin/locations/update:
+    post:
+      tags: [Admin]
+      summary: Update a location's tier and/or status
+      security: [{ adminSession: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [locationId, expectedUpdatedAt]
+              properties:
+                locationId: { type: string, format: uuid }
+                expectedUpdatedAt: { type: string, format: date-time }
+                tier: { type: integer, minimum: 1, maximum: 4 }
+                status: { type: string, enum: [active, disabled] }
+      responses:
+        "200": { description: Location updated + audited }
+
+  /api/v1/admin/settings/update:
+    post:
+      tags: [Admin]
+      summary: Update a single setting (optimistic concurrency)
+      security: [{ adminSession: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [settingId, expectedUpdatedAt, value]
+              properties:
+                settingId: { type: string, format: uuid }
+                expectedUpdatedAt: { type: string, format: date-time }
+                value: { type: string }
+      responses:
+        "200": { description: Setting updated + cache invalidated }
